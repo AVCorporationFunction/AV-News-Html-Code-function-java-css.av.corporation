@@ -1,0 +1,337 @@
+package cn.colintree.aix.ColinTreeListView;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.google.appinventor.components.annotations.DesignerComponent;
+import com.google.appinventor.components.annotations.DesignerProperty;
+import com.google.appinventor.components.annotations.PropertyCategory;
+import com.google.appinventor.components.annotations.SimpleEvent;
+import com.google.appinventor.components.annotations.SimpleFunction;
+import com.google.appinventor.components.annotations.SimpleObject;
+import com.google.appinventor.components.annotations.SimpleProperty;
+import com.google.appinventor.components.annotations.UsesPermissions;
+import com.google.appinventor.components.common.ComponentCategory;
+import com.google.appinventor.components.common.ComponentConstants;
+import com.google.appinventor.components.common.PropertyTypeConstants;
+import com.google.appinventor.components.runtime.AndroidNonvisibleComponent;
+import com.google.appinventor.components.runtime.AndroidViewComponent;
+import com.google.appinventor.components.runtime.ButtonBase;
+import com.google.appinventor.components.runtime.Component;
+import com.google.appinventor.components.runtime.ComponentContainer;
+import com.google.appinventor.components.runtime.EventDispatcher;
+import com.google.appinventor.components.runtime.Form;
+import com.google.appinventor.components.runtime.HVArrangement;
+import com.google.appinventor.components.runtime.HorizontalArrangement;
+import com.google.appinventor.components.runtime.Label;
+import com.google.appinventor.components.runtime.VerticalArrangement;
+import com.google.appinventor.components.runtime.VerticalScrollArrangement;
+import com.google.appinventor.components.runtime.util.AsyncCallbackPair;
+import com.google.appinventor.components.runtime.util.MediaUtil;
+import com.google.appinventor.components.runtime.util.ViewUtil;
+import com.google.appinventor.components.runtime.util.YailList;
+import android.graphics.drawable.BitmapDrawable;
+import android.os.Handler;
+import android.util.Log;
+
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
+import android.view.View.OnTouchListener;
+import android.widget.ScrollView;
+import android.view.MotionEvent;@DesignerComponent(version = ColinTreeListView.VERSION,
+    category = ComponentCategory.EXTENSION,
+    nonVisible = true,
+    iconName = "https://1.bp.blogspot.com/-H3crp9bfgjI/YSSIo3KRj2I/AAAAAAAAKNg/x9QecszUWvkmA0S4_BHMJ1pMvHpkhDLsQCLcBGAsYHQ/s320/logo.png",
+    helpUrl = "https://bkrmooli.blogspot.com/")
+
+@SimpleObject(external = true)
+@UsesPermissions(permissionNames = "android.permission.INTERNET," +
+    "android.permission.ACCESS_NETWORK_STATE," +
+    "android.permission.READ_EXTERNAL_STORAGE")
+public class ColinTreeListView extends AndroidNonvisibleComponent implements Component {
+
+    // VERSION 2:
+    //   First version to be released
+    // VERSION 3:
+    //   Adapted to new Appinventor (since 2017.12.27, Companion 2.45) (Fixed NoSuchMethodError)
+    //   Added properties related to image loading - AsyncImageLoad & CacheImage (that in a same path)
+    //   Added property - ScrollBottomAfterAdd
+    // VERSION 4:
+    //   Adapted to all platforms (ai2.appinventor.mit.edu , thunkable , etc.) 
+    //     There should not more NoSuchMethodError at anywhere.
+    // VERSION 5:
+    //   Added icon text related properties
+    //   Added lastClickedElement & lastClickedIcon
+    // VERSION 6:
+    //   Added properties of text height (both main- & sub-text)
+    // VERSION 7:
+    //   Fixed that lastClickedElement starts from 0
+    //   Fixed that images that cached by a same path would act wired when one of them is clicked
+    //   Added a extra button
+    // VERSION 8:
+    //   Fixed extraButtonEnabled not implemented
+    //   Added support of direct(static) handlers in ColinTreeListViewElement
+    // VERSION 9:
+    //   Fixed Error of Visiblility
+    //   Added ClearCache() & ClearAllCache() -- still in test, it should works
+    // VERSION 10:
+    //   Added Get by @10MINT 
+    //   Added LastLongClickedElement by @10MINT 
+    //   Fixes Label cannot click on some platforms
+    // VERSION 11:
+    //   Added Translations (need platform supporting)//   Fixed a Get method bug (#11)
+    //   Added ExtraButtonImage in ColinTreeListViewElement
+    //   Removed flag deprecated from all blocks
+    public static final int VERSION = 11;
+
+    private static final String LOG_TAG = "ColinTreeListView";
+
+    private final ArrayList<Element> elementList = new ArrayList<Element>();
+    private HVArrangement vaContainer = null;
+    private int currentListSize = 0;
+
+    private final Handler handler = new Handler();
+
+    private int lastClickedElement = 0;
+    private int lastLongClickedElement = 0;
+    private int lastClickedIcon = 0;
+    private int lastClickedExtraButton = 0;
+
+    // Appearance
+    private int elementHeight = 57;
+    private int elementTouchDownColor = COLOR_DEFAULT;
+    private int elementWidthBeforeIcon = 7;
+    private int elementWidthAfterIcon = 5;
+    private int elementIconWidth = 40;
+    private int elementIconHeight = 40;
+    private int elementIconradius = 5;
+    private int elementIconShape = BUTTON_SHAPE_ROUNDED;
+    private int elementIconBgColor = COLOR_DEFAULT;
+    private int elementIconTextColor = COLOR_DEFAULT;
+    private float elementIconTextFontSize = 24;
+    private boolean elementIconTextFontBold = true;
+    private boolean elementIconMultiParams = false;
+    private int elementIconPaddings = 0;
+    private int elementTextColor = COLOR_BLACK;
+    private float elementTextFontSize = 14f;
+    private boolean elementTextFontBold = false;
+    private int elementTextHeight = 18;
+    private int elementSubTextColor = COLOR_LTGRAY;
+    private float elementSubTextFontSize = 12;
+    private boolean elementSubTextFontBold = false;
+    private int elementSubTextHeight = 18;
+    private int elementWidthBeforeExtraButton = 2;
+    private String elementExtraButtonText = "";
+    private float elementExtraButtonTextFontSize = 12;
+    private boolean elementExtraButtonTextFontBold = false;
+    private int elementExtraButtonWidth = 20;
+    private int elementExtraButtonHeight = 20;
+    private int elementExtraButtonPaddings = 0;
+    private int elementExtraButtonBgColor = COLOR_LTGRAY;private int elementExtraButtonShape = BUTTON_SHAPE_OVAL;
+    private String elementExtraButtonImage = "";
+    private int elementUnderlineColor = COLOR_LTGRAY;
+    private int elementUnderlineWidth = 1;
+
+    // Behaviour
+    private boolean scrollBottomAfterAdd = false;
+    private boolean asyncImageLoad = false;
+    private boolean cacheImage = false;
+    private boolean extraButtonEnabled = false;
+
+    private HashMap<String, CachedImage> iconMap = new HashMap<String, CachedImage>();
+
+    private final Form form;
+
+
+    private static final YailList makeYailList(Object... obj) {
+        return YailList.makeList(obj);
+    }
+
+
+    public ColinTreeListView(ComponentContainer container) {
+        super(container.$form());
+        form = container.$form();
+        Log.d(LOG_TAG, "ColinTreeListView Created");
+    }
+
+    @SimpleFunction
+    public void Initialize(VerticalArrangement verticalArrangement) {
+        vaContainer = verticalArrangement;
+        vaContainer.AlignHorizontal(ComponentConstants.GRAVITY_CENTER_HORIZONTAL);
+    }
+    @SimpleFunction
+    public void Initialize_Scroll(VerticalScrollArrangement verticalScrollArrangement) {
+        vaContainer = verticalScrollArrangement;
+        vaContainer.AlignHorizontal(ComponentConstants.GRAVITY_CENTER_HORIZONTAL);
+    }
+@SimpleFunction
+    public void Clear() {
+        Set(YailList.makeEmptyList());
+    }
+
+    @SimpleFunction
+    public void Set(YailList list) {
+        int size = list.size();
+        Object sublistElement;
+        // Set the new list elements
+        for (int i = 0; i < size; i++) {
+            sublistElement = list.getObject(i);
+            if (sublistElement instanceof YailList) {
+                if (currentListSize > i) {
+                    SetElement(i+1, (YailList)sublistElement);
+                    // Calling the function that is shown in bky, so the index start from 1
+                } else {
+                    AddElement((YailList)sublistElement);
+                }
+            } else {
+                if (currentListSize > i) {
+                    SetElement(i+1, makeYailList(sublistElement));
+                    // Calling the function that is shown in bky, so the index start from 1
+                } else {
+                    AddElement(makeYailList(sublistElement));
+                }
+            }
+        }
+        // Hide the elements that is created but not uesd
+        for (int i = list.size(); i < currentListSize; i++) {
+            getElement(i + 1).hide();
+        }
+        currentListSize = list.size();
+    }
+
+    //added by @10MINT
+    //returns the list of the listview
+    @SimpleFunction
+    public YailList Get() {
+        ArrayList<YailList> stringRepresentation = new ArrayList<YailList>();
+        for (int i = 1; i <= this.currentListSize; i++) {
+            stringRepresentation.add(GetElement(i));
+        }
+        return YailList.makeList(stringRepresentation);
+    }
+
+    @SimpleFunction
+    public void AddElement(YailList element) {
+        int elementListSize = elementList.size();
+        if (currentListSize < elementListSize && elementListSize > 0) {
+            getElement(currentListSize + 1)
+                .show()
+                .set(element);
+        } else {
+            final int elementIndex = currentListSize;
+            elementList.add(new Element(vaContainer, element) {
+                @Override
+                public void onElementClick() {
+                    ElementClick(elementIndex);
+                }
+                @Override
+                public boolean onElementLongClick() {
+                    return ElementLongClick(elementIndex);
+                }
+                @Override
+                public void onElementTouchDown() {
+                    ElementTouchDown(elementIndex);
+                }
+                @Override
+                public void onElementTouchUp() {
+                    ElementTouchUp(elementIndex);
+                }
+
+                @Override
+                public void onIconClick() {
+                    IconClick(elementIndex);
+                }
+                @Override
+                public boolean onIconLongClick() {
+                    return IconLongClick(elementIndex);
+                }
+                @Override
+                public void onIconTouchDown() {
+                    IconTouchDown(elementIndex);
+                }
+                @Override
+                public void onIconTouchUp() {
+                    IconTouchUp(elementIndex);
+                }
+
+                @Override
+                public void onExtraButtonClick() {
+                    ExtraButtonClick(elementIndex);
+                }
+                @Override
+                public boolean onExtraButtonLongClick() {
+                    return ExtraButtonLongClick(elementIndex);
+                }
+                @Override
+                public void onExtraButtonTouchDown() {
+                    ExtraButtonTouchDown(elementIndex);
+                }
+                @Override
+                public void onExtraButtonTouchUp() {
+                    ExtraButtonTouchUp(elementIndex);
+                }
+            });
+        }
+        currentListSize++;
+
+        if (scrollBottomAfterAdd && (vaContainer.getView() instanceof ScrollView)) {
+            handler.postDelayed(new Runnable() {
+                @OverrideonElementClick() {
+                    ElementClick(elementIndex);
+                }
+                @Override
+                public boolean onElementLongClick() {
+                    return ElementLongClick(elementIndex);
+                }
+                @Override
+                public void onElementTouchDown() {
+                    ElementTouchDown(elementIndex);
+                }
+                @Override
+                public void onElementTouchUp() {
+                    ElementTouchUp(elementIndex);
+                }
+
+                @Override
+                public void onIconClick() {
+                    IconClick(elementIndex);
+                }
+                @Override
+                public boolean onIconLongClick() {
+                    return IconLongClick(elementIndex);
+                }
+                @Override
+                public void onIconTouchDown() {
+                    IconTouchDown(elementIndex);
+                }
+                @Override
+                public void onIconTouchUp() {
+                    IconTouchUp(elementIndex);
+                }
+
+                @Override
+                public void onExtraButtonClick() {
+                    ExtraButtonClick(elementIndex);
+                }
+                @Override
+                public boolean onExtraButtonLongClick() {
+                    return ExtraButtonLongClick(elementIndex);
+                }
+                @Override
+                public void onExtraButtonTouchDown() {
+                    ExtraButtonTouchDown(elementIndex);
+                }
+                @Override
+                public void onExtraButtonTouchUp() {
+                    ExtraButtonTouchUp(elementIndex);
+                }
+            });
+        }
+        currentListSize++;
+
+        if (scrollBottomAfterAdd && (vaContainer.getView() instanceof ScrollView)) {
+            handler.postDelayed(new Runnable() {
+                @Override
